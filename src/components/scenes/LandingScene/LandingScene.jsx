@@ -1,11 +1,11 @@
 import React, { useState } from "react";
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls, Html } from "@react-three/drei";
+import { OrbitControls } from "@react-three/drei";
 import LandingCamera from "./LandingCamera";
 import LandingModels from "./LandingModels";
 import LandingUI from "./LandingUI";
 
-export default function LandingScene() {
+export default function LandingScene({ onEnterCampus }) { 
   const [campusEntered, setCampusEntered] = useState(false);
 
   const buildingPositions = [
@@ -20,17 +20,22 @@ export default function LandingScene() {
         <color attach="background" args={["#a8d0ff"]} />
         <ambientLight intensity={0.6} />
         <directionalLight position={[5, 10, 5]} intensity={1} />
+
         <LandingCamera
           buildings={campusEntered ? buildingPositions : []}
           onAnimationEnd={() => console.log("Camera finished building traversal")}
         />
+
         <LandingModels />
-        <OrbitControls
-            enableZoom={!campusEntered} 
-        />
+        <OrbitControls enableZoom={!campusEntered} enableRotate={false} enablePan={false} />
       </Canvas>
 
-      <LandingUI onEnterCampus={() => setCampusEntered(true)} />
+      <LandingUI
+        onEnterCampus={() => {
+          setCampusEntered(true);
+          onEnterCampus?.(); 
+        }}
+      />
     </div>
   );
 }

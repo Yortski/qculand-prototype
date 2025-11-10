@@ -8,8 +8,8 @@ export default function LandingCamera({ buildings = [], enterCampus }) {
   const [animationStage, setAnimationStage] = useState(0); 
 
   const positions = [
-    { x: 0, y: 10, z: 8 },     
-    { x: 0, y: 1, z: 8 },      
+    { x: 0, y: 8, z: 6 },     
+    { x: 0, y: 1, z: 6 },      
     { x: 0, y: 0.15, z: 4.15 },
     { x: 0, y: 2.5, z: 0.5 },    
   ];

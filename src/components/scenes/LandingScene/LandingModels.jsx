@@ -2,9 +2,10 @@ import React from 'react';
 import { useGLTF } from '@react-three/drei';
 import Bldg1 from "./Models/Bldg1";
 import QcuBee from './Models/QcuBee';
+import Cipher from './Models/Cipher';
 
 export default function LandingModels() {
-  const campus = useGLTF('./models/university_map.glb');
+  const campus = useGLTF('./models/clickright_map.glb');
 
   return (
     <>
@@ -15,6 +16,7 @@ export default function LandingModels() {
       <Bldg1 position={[-2, 0, 0]} rotation={[0, Math.PI /2, 0]} />
       <Bldg1 position={[2, 0, 0]} rotation={[0, -Math.PI /2, 0]} />
       <QcuBee scale={0.025} position={[0, 0, 3.75]} />
+      <Cipher scale={0.125} position={[-0.075, 0.05, 3.25]} rotation={[0.275, 0.25, 0.15]} />
     </>
   );
 }
