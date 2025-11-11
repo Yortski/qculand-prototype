@@ -1,10 +1,5 @@
 import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-
-
-import React from 'react';
 import { motion } from 'framer-motion';
-
 
 export default function PlayerUI() {
   return (
