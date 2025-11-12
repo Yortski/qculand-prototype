@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import LandingScene from "./LandingScene/LandingScene";
 import DormScene from "./DormScene/DormScene";
+import LibraryScene from "./LibraryScene/LibraryScene";
 
 function LoadingScene() {
   return (
@@ -128,7 +129,21 @@ export default function SceneManager() {
             <LandingScene 
               onEnterCampus={() => handleSceneChange("dorm")}
               onEnterDorm={() => handleSceneChange("dorm")}
+              onEnterLibrary={() => handleSceneChange("library")}
             />
+          </motion.div>
+        )}
+
+        {currentScene === "library" && !isLoading && (
+          <motion.div
+            key="library"
+            variants={variants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            className="absolute w-full h-full"
+          >
+            <LibraryScene />
           </motion.div>
         )}
 
