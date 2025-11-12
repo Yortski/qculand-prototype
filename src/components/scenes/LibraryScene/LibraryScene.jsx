@@ -1,85 +1,105 @@
-import React from 'react';
+import React, { Suspense, lazy, useState, useCallback } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls } from '@react-three/drei';
+import LoadingFallback from '../../LoadingFallback';
+import ErrorBoundary from '../../ErrorBoundary';
+import LibraryPlayer from './LibraryPlayer';
+import LibraryPlayerUI from './LibraryPlayerUI';
 
-function Shelf({ x, y }) {
-  return (
-    <group position={[x, y, 0]}> 
-      <mesh position={[0, 0.4, 0]}> 
-        <boxGeometry args={[0.2, 0.8, 4.6]} />
-        <meshStandardMaterial color="#6b4a2a" />
-      </mesh>
-    </group>
-  );
-}
-
-function BooksRow({ x, y, count = 10 }) {
-  const colors = ['#c94b4b','#4b8bc9','#4bc98b','#c98b4b','#8b4bc9','#c94bb0'];
-  return (
-    <group position={[x,y, -1.8]}>
-      {Array.from({length: count}).map((_, i) => (
-        <mesh key={i} position={[ -1.8 + i * 0.36, 0, 0 ]}>
-          <boxGeometry args={[0.14, 0.4, 0.25]} />
-          <meshStandardMaterial color={colors[i % colors.length]} />
-        </mesh>
-      ))}
-    </group>
-  );
-}
+const LibraryEnvironment = lazy(() => import('./LibraryEnvironment'));
+import CipherModel from '../LandingScene/Models/Cipher';
+import LibraryUI from './LibraryUI';
 
 export default function LibraryScene({ onExit }) {
-  return (
-    <div className="w-full h-full fixed top-0 left-0">
-      <Canvas shadows camera={{ position: [0, 2, 5], fov: 55 }}>
-        <color attach="background" args={["#dbeeff"]} />
-        <ambientLight intensity={0.8} />
-        <directionalLight position={[5, 10, 5]} intensity={0.8} />
+	const [showScenarios, setShowScenarios] = useState(false);
+	const [showCipherName, setShowCipherName] = useState(false);
+	
+	const handleCipherClick = useCallback(() => {
+		setShowScenarios(true);
+	}, []);
 
-        {/* Floor */}
-        <mesh rotation={[-Math.PI/2, 0, 0]} position={[0, 0, 0]} receiveShadow>
-          <planeGeometry args={[6,6]} />
-          <meshStandardMaterial color="#efe6d6" />
-        </mesh>
+	const handleScenarioComplete = useCallback(() => {
+		// Handle scenario completion
+	}, []);
 
-        {/* Walls */}
-        <mesh position={[0,1.5,-3]}> 
-          <boxGeometry args={[6,3,0.1]} />
-          <meshStandardMaterial color="#f3f6fb" />
-        </mesh>
-        <mesh position={[0,1.5,3]}> 
-          <boxGeometry args={[6,3,0.1]} />
-          <meshStandardMaterial color="#f3f6fb" />
-        </mesh>
-        <mesh position={[-3,1.5,0]}> 
-          <boxGeometry args={[0.1,3,6]} />
-          <meshStandardMaterial color="#f3f6fb" />
-        </mesh>
-        <mesh position={[3,1.5,0]}> 
-          <boxGeometry args={[0.1,3,6]} />
-          <meshStandardMaterial color="#f3f6fb" />
-        </mesh>
+	const handleFeedback = useCallback((feedback) => {
+		// Handle feedback display
+	}, []);
 
-        {/* Left shelves */}
-        <Shelf x={-2.6} y={0.6} />
-        <BooksRow x={-2.6} y={0.25} count={18} />
+	const handleExitLibrary = useCallback(() => {
+		setShowScenarios(false);
+		if (onExit) onExit();
+	}, [onExit]);
+	
+	return (
+		<div className="w-full h-full fixed top-0 left-0">
+			<ErrorBoundary>
+				<Canvas shadows camera={{ position: [0, 2, 4], fov: 60 }}>
+					<color attach="background" args={["#1a1a2e"]} />
+					<ambientLight intensity={0.8} />
+					<directionalLight position={[5, 10, 5]} intensity={0.6} castShadow />
+					<pointLight position={[0, 2, -1.6]} intensity={1.2} color="#ff6b6b" distance={5} />
 
-        {/* Right shelves */}
-        <Shelf x={2.6} y={0.6} />
-        <BooksRow x={2.6} y={0.25} count={18} />
+					<Suspense fallback={<LoadingFallback />}>
+						<LibraryEnvironment />
+						
+						{/* Cipher behind the table */}
+						<group 
+							position={[0, 0, -5]} 
+							rotation={[0, 0, 0]}
+							onPointerOver={(e) => { 
+								e.stopPropagation(); 
+								document.body.style.cursor = 'pointer';
+								setShowCipherName(true);
+							}}
+							onPointerOut={(e) => { 
+								e.stopPropagation(); 
+								document.body.style.cursor = 'default';
+								setShowCipherName(false);
+							}}
+							onClick={(e) => { e.stopPropagation(); handleCipherClick(); }}
+						>
+							<CipherModel scale={0.7} />
+						</group>
+						
+						{/* Player with movement */}
+						<LibraryPlayer />
+					</Suspense>
+				</Canvas>
+			</ErrorBoundary>
 
-        {/* Center table */}
-        <mesh position={[0,0.35,0]}> 
-          <boxGeometry args={[2.2,0.1,1]} />
-          <meshStandardMaterial color="#d9c8b3" />
-        </mesh>
+			{/* Cipher name hover indicator */}
+			{showCipherName && !showScenarios && (
+				<div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-40">
+					<div className="bg-red-900/90 text-red-100 px-6 py-3 rounded-lg shadow-2xl border-2 border-red-700 backdrop-blur-sm">
+						<div className="text-2xl font-bold text-center mb-1">🕵️ CIPHER</div>
+						<div className="text-xs text-red-300 text-center">Click to interact</div>
+					</div>
+				</div>
+			)}
 
-        <OrbitControls enableZoom={true} enableRotate={true} enablePan={true} />
-      </Canvas>
+			{/* Player movement controls UI */}
+			{!showScenarios && <LibraryPlayerUI />}
+			
+			{/* Scenario UI */}
+			{showScenarios && (
+				<LibraryUI 
+					onScenarioComplete={handleScenarioComplete}
+					onFeedback={handleFeedback}
+					onExitLibrary={handleExitLibrary}
+				/>
+			)}
 
-      {/* Simple overlay back button */}
-      <div className="absolute top-6 left-6 z-50">
-        <button onClick={() => onExit?.()} className="px-4 py-2 bg-white rounded shadow">Back</button>
-      </div>
-    </div>
-  );
+			{/* Back button */}
+			{!showScenarios && (
+				<div className="absolute top-6 left-6 z-50">
+					<button 
+						onClick={() => onExit?.()} 
+						className="px-4 py-2 bg-white/90 rounded shadow hover:bg-white transition-colors"
+					>
+						← Back
+					</button>
+				</div>
+			)}
+		</div>
+	);
 }

@@ -1,97 +1,166 @@
-import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useCallback, useMemo, memo } from 'react';
+import { libraryScenarios } from './scenarios';
 
-const defaultQuestions = [
-  {
-    id: 1,
-    q: 'An email asks for your university password to "renew access". What should you do?',
-    choices: ['Reply with password', 'Ignore and report', 'Click the link and login'],
-    answer: 1
-  },
-  {
-    id: 2,
-    q: 'You see two websites offering the same textbook. The URL looks unusual on one. What is a red flag?',
-    choices: ['Low price', 'Mismatched domain and brand', 'Both are safe by default'],
-    answer: 1
-  },
-  {
-    id: 3,
-    q: 'You find a USB drive labeled "Exam Notes" in the library. Best action?',
-    choices: ['Plug it in to inspect', 'Hand it to IT/security', 'Post about it online'],
-    answer: 1
-  }
-];
+// Memoize choice button component
+const ChoiceButton = memo(({ choice, onChoice }) => (
+  <motion.button
+    onClick={() => onChoice(choice)}
+    className="w-full py-3 px-4 rounded-lg bg-blue-500 hover:bg-blue-600 text-white transition text-left"
+    whileTap={{ scale: 0.98 }}
+  >
+    {choice.text}
+  </motion.button>
+));
 
-export default function LibraryUI({ visible, onClose, questions = defaultQuestions }) {
-  const [idx, setIdx] = useState(0);
-  const [score, setScore] = useState(0);
-  const [selected, setSelected] = useState(null);
+ChoiceButton.displayName = 'ChoiceButton';
 
-  const reset = () => {
-    setIdx(0); setScore(0); setSelected(null);
-  };
+export default function LibraryUI({ onScenarioComplete, onFeedback, onExitLibrary }) {
+  const [index, setIndex] = useState(0);
+  const [feedback, setFeedback] = useState(null);
+  const [isCompleted, setIsCompleted] = useState(false);
+  
+  const scenario = useMemo(() => libraryScenarios[index], [index]);
 
-  const handleSelect = (i) => setSelected(i);
+  const handleChoice = useCallback((choice) => {
+    setFeedback(choice.feedback);
+    if (onFeedback) onFeedback(choice.feedback);
+  }, [onFeedback]);
 
-  const handleSubmit = () => {
-    if (selected == null) return;
-    if (selected === questions[idx].answer) setScore(s => s + 1);
-    setSelected(null);
-    if (idx + 1 >= questions.length) {
-      // finished
-      onClose?.({ score: score + (selected === questions[idx].answer ? 1 : 0), total: questions.length });
-      reset();
+  const handleNext = useCallback(() => {
+    setFeedback(null);
+    if (index < libraryScenarios.length - 1) {
+      setIndex(prev => prev + 1);
+      if (onScenarioComplete) onScenarioComplete();
     } else {
-      setIdx(i => i + 1);
+      setIsCompleted(true);
+      if (onScenarioComplete) onScenarioComplete();
     }
-  };
+  }, [index, onScenarioComplete]);
 
-  const handleClose = () => {
-    onClose?.(null);
-    reset();
-  };
+  const handleExit = useCallback(() => {
+    if (onExitLibrary) onExitLibrary();
+  }, [onExitLibrary]);
 
   return (
-    <AnimatePresence>
-      {visible && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="absolute inset-0 flex items-center justify-center bg-black/50 z-50 pointer-events-auto"
-        >
+    <div className="absolute top-0 left-0 w-full h-full flex flex-col justify-end items-center p-6 pointer-events-none">
+      
+      {/* Completion Screen */}
+      <AnimatePresence>
+        {isCompleted && (
           <motion.div
-            initial={{ scale: 0.9 }}
-            animate={{ scale: 1 }}
-            exit={{ scale: 0.9 }}
-            className="bg-white rounded-2xl p-6 max-w-lg w-full mx-4"
+            key="completion-screen"
+            className="absolute inset-0 flex justify-center items-center bg-black/30 pointer-events-auto"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
           >
-            <h3 className="text-2xl font-bold mb-3">Cipher — Library Quiz</h3>
-            <p className="text-sm text-gray-600 mb-4">Chat with Cipher and answer quick questions to test your awareness.</p>
+            <motion.div
+              className="bg-white rounded-3xl shadow-2xl p-8 max-w-lg text-center"
+              initial={{ scale: 0.8, opacity: 0, y: 50 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.8, opacity: 0, y: 50 }}
+              transition={{ type: 'spring', stiffness: 150, damping: 15 }}
+            >
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
+                className="text-7xl mb-4"
+              >
+                🎉
+              </motion.div>
+              <h2 className="text-3xl font-bold text-gray-800 mb-3">Well Done!</h2>
+              <p className="text-gray-700 text-lg mb-4">
+                You've completed all cybersecurity scenarios in the library!
+              </p>
+              <div className="bg-blue-50 rounded-2xl p-4 mb-6">
+                <p className="text-blue-800 font-semibold mb-2">📚 Skills Learned:</p>
+                <ul className="text-left text-sm text-blue-700 space-y-1">
+                  <li>✓ Phishing email detection</li>
+                  <li>✓ USB drive safety</li>
+                  <li>✓ Public computer security</li>
+                  <li>✓ Safe downloading practices</li>
+                  <li>✓ Wi-Fi network verification</li>
+                </ul>
+              </div>
+              <motion.button
+                onClick={handleExit}
+                className="w-full py-3 px-6 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-full font-semibold shadow-lg hover:shadow-xl transition"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                Continue Exploring
+              </motion.button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-            <div className="mb-4">
-              <div className="font-medium mb-2">Question {idx + 1} / {questions.length}</div>
-              <div className="mb-3 text-gray-800">{questions[idx].q}</div>
-              <div className="space-y-2">
-                {questions[idx].choices.map((c, i) => (
-                  <button
-                    key={i}
-                    onClick={() => handleSelect(i)}
-                    className={`w-full text-left p-3 rounded ${selected === i ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-800'} `}
-                  >
-                    {c}
-                  </button>
-                ))}
+      {/* Scenario Display */}
+      <AnimatePresence mode="wait">
+        {!feedback && !isCompleted && (
+          <motion.div
+            key={`scenario-${index}`}
+            className="bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl p-6 max-w-2xl w-full pointer-events-auto"
+            initial={{ y: 50, opacity: 0, scale: 0.95 }}
+            animate={{ y: 0, opacity: 1, scale: 1 }}
+            exit={{ y: -50, opacity: 0, scale: 0.95 }}
+            transition={{ type: 'spring', stiffness: 180, damping: 15 }}
+          >
+            <div className="flex items-start gap-3 mb-4">
+              <div className="text-4xl">🕵️</div>
+              <div className="flex-1">
+                <h3 className="text-xl font-bold text-gray-800">{scenario.title}</h3>
+                <p className="text-sm text-gray-500">Scenario {index + 1} of {libraryScenarios.length}</p>
               </div>
             </div>
-
-            <div className="flex gap-3">
-              <button onClick={handleSubmit} className="px-4 py-2 bg-blue-600 text-white rounded">Submit</button>
-              <button onClick={handleClose} className="px-4 py-2 bg-gray-200 rounded">Close</button>
+            
+            <p className="text-gray-700 mb-6 leading-relaxed">{scenario.text}</p>
+            
+            <div className="space-y-3">
+              {scenario.choices.map((choice, i) => (
+                <ChoiceButton key={i} choice={choice} onChoice={handleChoice} />
+              ))}
             </div>
           </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+        )}
+      </AnimatePresence>
+
+      {/* Feedback Modal */}
+      <AnimatePresence>
+        {feedback && !isCompleted && (
+          <motion.div
+            key="feedback"
+            className="bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl p-6 max-w-2xl w-full pointer-events-auto"
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.8, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+          >
+            <div className="text-center mb-4">
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.1, type: 'spring', stiffness: 200 }}
+                className="text-6xl mb-3"
+              >
+                {feedback.includes('Great') || feedback.includes('Smart') || feedback.includes('Excellent') ? '✅' : '⚠️'}
+              </motion.div>
+              <p className="text-gray-800 text-lg leading-relaxed">{feedback}</p>
+            </div>
+            
+            <motion.button
+              onClick={handleNext}
+              className="w-full py-3 px-6 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-full font-semibold shadow-lg hover:shadow-xl transition"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              {index < libraryScenarios.length - 1 ? 'Next Scenario' : 'Complete'}
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
