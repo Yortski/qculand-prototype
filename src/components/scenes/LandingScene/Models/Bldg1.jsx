@@ -20,14 +20,14 @@ export default function Bldg1({ onClick, isInteractable, buildingId, ...props })
         }
         
         // Store original emissive for this instance
-        if (isInteractable && child.material.emissive) {
+        if (child.material.emissive) {
           child.userData.originalEmissive = child.material.emissive.clone();
         }
       }
     });
     
     return clone;
-  }, [scene, isInteractable]);
+  }, [scene]);
 
   // Handle hover effect
   const handlePointerOver = (e) => {
