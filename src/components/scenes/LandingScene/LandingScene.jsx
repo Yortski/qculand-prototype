@@ -89,7 +89,7 @@ export default function LandingScene({ onEnterCampus, onEnterDorm, onEnterLibrar
           />
         )}
 
-        <LandingModels onBuildingClick={handleBuildingClick} />
+        <LandingModels onBuildingClick={handleBuildingClick} campusEntered={campusEntered} />
         
         {/* Show player after entering campus */}
         {showPlayer && <Player />}
