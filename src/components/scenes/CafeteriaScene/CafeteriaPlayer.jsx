@@ -1,16 +1,13 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
-import { useStore } from '../../../hooks/useStore';
 
-export default function Player({ useStoredPosition = false }) {
+export default function CafeteriaPlayer() {
   const playerRef = useRef();
-  const { camera, raycaster } = useThree();
-  const { playerPosition, setPlayerPosition } = useStore();
+  const { camera } = useThree();
   
-  // Movement state - use stored position only if explicitly told to (returning from building)
-  // Otherwise use default position [0, 0, 5] (fresh start / clicking Enter Campus)
-  const [position, setPosition] = useState(useStoredPosition ? playerPosition : [0, 0, 5]);
+  // Movement state - start near front center
+  const [position, setPosition] = useState([0, 0, 2.5]);
   const velocity = useRef(new THREE.Vector3());
   const targetPosition = useRef(null);
   const moveSpeed = 0.03;
@@ -24,18 +21,24 @@ export default function Player({ useStoredPosition = false }) {
     d: false,
   });
 
-  // Camera offset - moved closer for smaller player
-  const cameraOffset = useRef(new THREE.Vector3(0, 1.5, 2.5));
-  const cameraLookAt = useRef(new THREE.Vector3());
-  const cameraAngle = useRef(0); // Horizontal rotation angle
-  const cameraPitch = useRef(0.3); // Vertical angle (pitch)
-  const cameraDistance = useRef(2.5); // Zoom distance
-
-  // Mouse drag state for camera control
+  // Camera control
+  const cameraAngle = useRef(Math.PI);
+  const cameraPitch = useRef(0.4);
+  const cameraDistance = useRef(3.5);
+  
+  // Mouse drag state
   const isDragging = useRef(false);
   const dragStartPos = useRef({ x: 0, y: 0 });
   const lastMouseX = useRef(0);
   const lastMouseY = useRef(0);
+
+  // Cafeteria room boundaries (8m x 8m room)
+  const bounds = {
+    minX: -3.5,
+    maxX: 3.5,
+    minZ: -3.5,
+    maxZ: 3.5,
+  };
 
   // Handle keyboard input
   useEffect(() => {
@@ -62,55 +65,41 @@ export default function Player({ useStoredPosition = false }) {
     };
   }, []);
 
-  // Handle mouse click for movement
+  // Handle mouse interactions
   useEffect(() => {
     const handleClick = (event) => {
-      // Only process left clicks
       if (event.button !== 0) return;
       
-      // Ignore if was dragging camera (moved more than 5 pixels)
       const dragDistance = Math.sqrt(
         Math.pow(event.clientX - dragStartPos.current.x, 2) +
         Math.pow(event.clientY - dragStartPos.current.y, 2)
       );
       
-      if (dragDistance > 5) {
-        return;
-      }
-
-      // Ignore clicks on UI elements
+      if (dragDistance > 5) return;
       if (event.target.tagName !== 'CANVAS') return;
 
-      // Convert mouse position to normalized device coordinates
       const rect = event.target.getBoundingClientRect();
       const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
       const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
-      // Create a new raycaster from the current camera position
       const mouse = new THREE.Vector2(x, y);
-      const newRaycaster = new THREE.Raycaster();
-      newRaycaster.setFromCamera(mouse, camera);
+      const raycaster = new THREE.Raycaster();
+      raycaster.setFromCamera(mouse, camera);
       
-      // Find ground plane (y = 0)
       const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
       const intersectPoint = new THREE.Vector3();
-      const result = newRaycaster.ray.intersectPlane(groundPlane, intersectPoint);
+      const result = raycaster.ray.intersectPlane(groundPlane, intersectPoint);
 
       if (result && intersectPoint) {
-        // Clamp the target position to boundaries
-        const clampedX = THREE.MathUtils.clamp(intersectPoint.x, -8, 8);
-        const clampedZ = THREE.MathUtils.clamp(intersectPoint.z, -6, 6);
-        
-        // Set new target - this will override any previous target
+        const clampedX = THREE.MathUtils.clamp(intersectPoint.x, bounds.minX, bounds.maxX);
+        const clampedZ = THREE.MathUtils.clamp(intersectPoint.z, bounds.minZ, bounds.maxZ);
         targetPosition.current = new THREE.Vector3(clampedX, 0, clampedZ);
       }
     };
 
     const handleMouseDown = (event) => {
-      // Store starting position for all mouse buttons
       dragStartPos.current = { x: event.clientX, y: event.clientY };
       
-      // Right click or middle mouse button for camera rotation
       if (event.button === 2 || event.button === 1) {
         event.preventDefault();
         isDragging.current = false;
@@ -120,19 +109,16 @@ export default function Player({ useStoredPosition = false }) {
     };
 
     const handleMouseMove = (event) => {
-      if (event.buttons === 2 || event.buttons === 4) { // Right or middle button
+      if (event.buttons === 2 || event.buttons === 4) {
         isDragging.current = true;
         const deltaX = event.clientX - lastMouseX.current;
         const deltaY = event.clientY - lastMouseY.current;
         
-        // Update camera angle (horizontal rotation)
         cameraAngle.current -= deltaX * 0.005;
-        
-        // Update camera pitch (vertical rotation)
         cameraPitch.current = THREE.MathUtils.clamp(
           cameraPitch.current + deltaY * 0.003,
-          0.1,  // Min pitch (looking down)
-          1.2   // Max pitch (looking up)
+          0.1,
+          1.2
         );
         
         lastMouseX.current = event.clientX;
@@ -142,7 +128,6 @@ export default function Player({ useStoredPosition = false }) {
 
     const handleMouseUp = (event) => {
       if (event.button === 2 || event.button === 1) {
-        // Reset drag flag after a moment
         setTimeout(() => {
           isDragging.current = false;
         }, 10);
@@ -150,21 +135,17 @@ export default function Player({ useStoredPosition = false }) {
     };
 
     const handleContextMenu = (event) => {
-      event.preventDefault(); // Prevent right-click context menu
+      event.preventDefault();
     };
 
     const handleWheel = (event) => {
       event.preventDefault();
-      
-      // Adjust zoom distance based on wheel delta
       const zoomSpeed = 0.001;
       const delta = event.deltaY * zoomSpeed;
-      
-      // Clamp zoom distance between 0.8 and 5 units
       cameraDistance.current = THREE.MathUtils.clamp(
         cameraDistance.current + delta,
-        0.8,  // Min zoom (closest)
-        5.0   // Max zoom (farthest)
+        2.0,
+        6.0
       );
     };
 
@@ -186,12 +167,9 @@ export default function Player({ useStoredPosition = false }) {
         canvas.removeEventListener('wheel', handleWheel);
       };
     }
-  }, [camera]);
+  }, [camera, bounds]);
 
-  // Save position to store periodically (every 30 frames to avoid excessive updates)
-  const frameCount = useRef(0);
-
-  // Update player position and camera every frame
+  // Update player and camera every frame
   useFrame(() => {
     if (!playerRef.current) return;
 
@@ -202,16 +180,9 @@ export default function Player({ useStoredPosition = false }) {
       player.position.z
     );
 
-    // Save position to store every 30 frames
-    frameCount.current++;
-    if (frameCount.current % 30 === 0) {
-      setPlayerPosition([player.position.x, player.position.y, player.position.z]);
-    }
-
-    // Reset velocity
     velocity.current.set(0, 0, 0);
 
-    // Handle WASD movement
+    // WASD movement
     const hasKeyboardInput = keys.current.w || keys.current.s || keys.current.a || keys.current.d;
     
     if (keys.current.w) velocity.current.z -= moveSpeed;
@@ -219,23 +190,20 @@ export default function Player({ useStoredPosition = false }) {
     if (keys.current.a) velocity.current.x -= moveSpeed;
     if (keys.current.d) velocity.current.x += moveSpeed;
 
-    // If WASD is being used, cancel click-to-move
     if (hasKeyboardInput) {
       targetPosition.current = null;
       velocity.current.normalize().multiplyScalar(moveSpeed);
     }
-    // Handle click-to-move (only if no keyboard input)
+    // Click-to-move
     else if (targetPosition.current) {
       const direction = new THREE.Vector3()
         .subVectors(targetPosition.current, currentPos);
       
       const distance = currentPos.distanceTo(targetPosition.current);
       
-      // Stop when close enough to target
       if (distance > 0.1) {
         velocity.current.copy(direction).normalize().multiplyScalar(clickMoveSpeed);
       } else {
-        // Reached destination, stop moving
         targetPosition.current = null;
         velocity.current.set(0, 0, 0);
       }
@@ -244,13 +212,13 @@ export default function Player({ useStoredPosition = false }) {
     // Apply velocity with boundaries
     const newX = THREE.MathUtils.clamp(
       player.position.x + velocity.current.x,
-      -8,
-      8
+      bounds.minX,
+      bounds.maxX
     );
     const newZ = THREE.MathUtils.clamp(
       player.position.z + velocity.current.z,
-      -6,
-      6
+      bounds.minZ,
+      bounds.maxZ
     );
 
     player.position.x = newX;
@@ -262,8 +230,8 @@ export default function Player({ useStoredPosition = false }) {
       player.rotation.y = THREE.MathUtils.lerp(player.rotation.y, angle, 0.1);
     }
 
-    // Smooth camera follow with orbital rotation and zoom
-    const radius = cameraDistance.current; // Use dynamic zoom distance
+    // Camera follow with orbital control
+    const radius = cameraDistance.current;
     const offsetX = Math.sin(cameraAngle.current) * radius * Math.cos(cameraPitch.current);
     const offsetY = 1.5 + Math.sin(cameraPitch.current) * radius;
     const offsetZ = Math.cos(cameraAngle.current) * radius * Math.cos(cameraPitch.current);
@@ -274,24 +242,15 @@ export default function Player({ useStoredPosition = false }) {
       player.position.z + offsetZ
     );
 
-    // Smoother camera position update
     camera.position.lerp(idealCameraPosition, 0.2);
-
-    // Always look directly at player - no interpolation needed here
-    cameraLookAt.current.set(
-      player.position.x,
-      player.position.y + 0.05,
-      player.position.z
-    );
-    camera.lookAt(cameraLookAt.current);
+    camera.lookAt(player.position.x, player.position.y + 0.5, player.position.z);
   });
 
   return (
     <group ref={playerRef} position={position}>
-      {/* Simple placeholder character - yellow capsule with face */}
-      {/* Scaled down to 1/4 size, positioned to touch the ground */}
-      <group position={[0, 0.08, 0]} scale={0.0625}>
-        {/* Body - adjusted to start from ground */}
+      {/* Player character - Arius (yellow capsule with face) */}
+      <group position={[0, 0, 0]} scale={0.625}>
+        {/* Body */}
         <mesh position={[0, 0.9, 0]} castShadow>
           <capsuleGeometry args={[0.3, 0.8, 8, 16]} />
           <meshStandardMaterial color="#FFD700" />
@@ -319,7 +278,7 @@ export default function Player({ useStoredPosition = false }) {
           <meshStandardMaterial color="#000000" />
         </mesh>
 
-        {/* Shadow blob on ground */}
+        {/* Shadow blob */}
         <mesh position={[0, 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
           <circleGeometry args={[0.4, 16]} />
           <meshBasicMaterial color="#000000" opacity={0.3} transparent />

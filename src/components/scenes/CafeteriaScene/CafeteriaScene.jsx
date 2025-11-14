@@ -2,17 +2,16 @@ import React, { Suspense, lazy, useState, useCallback } from 'react';
 import { Canvas } from '@react-three/fiber';
 import LoadingFallback from '../../LoadingFallback';
 import ErrorBoundary from '../../ErrorBoundary';
-import FacultyPlayer from './FacultyPlayer';
-import FacultyPlayerUI from './FacultyPlayerUI';
+import CafeteriaPlayer from './CafeteriaPlayer';
 import { useStore } from '../../../hooks/useStore';
 
-const FacultyEnvironment = lazy(() => import('./FacultyEnvironment'));
-import FacultyUI from './FacultyUI';
+const CafeteriaEnvironment = lazy(() => import('./CafeteriaEnvironment'));
+import CafeteriaUI from './CafeteriaUI';
 
-export default function FacultyScene({ onExit }) {
+export default function CafeteriaScene({ onExit }) {
 	const { setReturningFromBuilding } = useStore();
 	const [showScenarios, setShowScenarios] = useState(false);
-	
+
 	const handleScenarioComplete = useCallback(() => {
 		// Handle scenario completion
 	}, []);
@@ -21,7 +20,7 @@ export default function FacultyScene({ onExit }) {
 		// Handle feedback display
 	}, []);
 
-	const handleExitFaculty = useCallback(() => {
+	const handleExitCafeteria = useCallback(() => {
 		setShowScenarios(false);
 		setReturningFromBuilding(true);
 		if (onExit) onExit();
@@ -30,27 +29,27 @@ export default function FacultyScene({ onExit }) {
 	return (
 		<div className="w-full h-full fixed top-0 left-0">
 			<ErrorBoundary>
-				<Canvas shadows camera={{ position: [0, 3, 5], fov: 60 }}>
-					<color attach="background" args={["#b8a890"]} />
-					<ambientLight intensity={1.8} />
-					<directionalLight position={[5, 10, 5]} intensity={1.5} castShadow />
-					<pointLight position={[0, 2.5, -1.5]} intensity={2.5} color="#ffdd88" distance={10} />
+				<Canvas shadows camera={{ position: [0, 4, 6], fov: 60 }}>
+					<color attach="background" args={["#f5e6d3"]} />
+					<ambientLight intensity={2.0} />
+					<directionalLight position={[5, 10, 5]} intensity={1.8} castShadow />
+					<pointLight position={[0, 3, 0]} intensity={1.5} color="#ffeecc" distance={12} />
 
 					<Suspense fallback={<LoadingFallback />}>
-						<FacultyEnvironment />
+						<CafeteriaEnvironment />
 						
 						{/* Player with movement */}
-						<FacultyPlayer />
+						<CafeteriaPlayer />
 					</Suspense>
 				</Canvas>
 			</ErrorBoundary>
 
 			{/* Scenario UI */}
 			{showScenarios && (
-				<FacultyUI 
+				<CafeteriaUI 
 					onScenarioComplete={handleScenarioComplete}
 					onFeedback={handleFeedback}
-					onExitFaculty={handleExitFaculty}
+					onExitCafeteria={handleExitCafeteria}
 				/>
 			)}
 
